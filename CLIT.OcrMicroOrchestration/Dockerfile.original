@@ -1,0 +1,55 @@
+#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+WORKDIR /src
+
+
+# Install dependencies for Tesseract and Leptonica
+RUN apt-get update && \
+    apt-get install -y \
+    libpng-dev libjpeg-dev libtiff-dev zlib1g-dev \
+    gcc g++ \
+    autoconf automake libtool checkinstall \
+    git
+
+# Download and build Leptonica
+RUN cd ~ && \
+    wget http://www.leptonica.org/source/leptonica-1.73.tar.gz && \
+    tar -zxvf leptonica-1.73.tar.gz && \
+    cd leptonica-1.73 && \
+    ./configure && \
+    make && \
+    checkinstall && \
+    ldconfig
+
+# Clone and build Tesseract
+RUN cd ~ && \
+    git clone https://github.com/tesseract-ocr/tesseract.git && \
+    cd tesseract && \
+    ./autogen.sh && \
+    ./configure && \
+    make && \
+    make install && \
+    ldconfig
+
+
+COPY ["CleanIt.OcrMicroOrchestration/CleanIt.OcrMicroOrchestration.csproj", "CleanIt.OcrMicroOrchestration/"]
+RUN dotnet restore "CleanIt.OcrMicroOrchestration/CleanIt.OcrMicroOrchestration.csproj"
+COPY . .
+WORKDIR "/src/CleanIt.OcrMicroOrchestration"
+RUN dotnet build "CleanIt.OcrMicroOrchestration.csproj" -c Debug -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "CleanIt.OcrMicroOrchestration.csproj" -c Debug -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+ENTRYPOINT ["dotnet", "CleanIt.OcrMicroOrchestration.dll"]
+

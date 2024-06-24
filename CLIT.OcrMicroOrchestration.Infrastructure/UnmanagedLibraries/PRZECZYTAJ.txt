@@ -1,0 +1,5 @@
+﻿To Install on machine : 
+https://opencv.org/releases/
+
+then download and install + download eng,osd,pol.traineddata >> copy to tessdata folder in C:\Program Files\Tesseract-OCR\tessdata
+https://sourceforge.net/projects/tesseract-ocr.mirror/
